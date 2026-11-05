@@ -103,11 +103,15 @@ function Write-Findings($Rows) {
 
 function Write-Occurrences($Rows, [string]$Kind) {
     $items = @($Rows)
-    $title = if ($Kind -eq "word") { "Найденные слова" } else { "Найденные одиночные предложения" }
+    $title = switch ($Kind) {
+        "word" { "Найденные слова" }
+        "phrase" { "Совпадения из двух и более слов" }
+        default { "Найденные одиночные предложения" }
+    }
     Write-Host "`n$title" -ForegroundColor Cyan
     if (-not $items.Count) {
         Write-Host "  В этом эксперименте подходящих результатов нет." -ForegroundColor Yellow
-        Write-Host "  Слова сохраняются в режиме поиска слов, предложения — в режиме поиска предложений." -ForegroundColor DarkGray
+        Write-Host "  Слова и фразы сохраняются в режиме поиска слов, предложения — в режиме поиска предложений." -ForegroundColor DarkGray
         return
     }
     $number = 0
@@ -244,6 +248,7 @@ function Show-Menu {
         Write-Host " 10. Найденные слова и частота"
         Write-Host " 11. Найденные одиночные предложения и частота"
         Write-Host " 12. Кастомный поиск по числу страниц"
+        Write-Host " 13. Совпадения из двух и более слов"
         Write-Host "  0. Выход"
         $choice = Read-Host "Выбери действие"
         switch ($choice) {
@@ -259,6 +264,7 @@ function Show-Menu {
             "10" { Write-Occurrences @(Invoke-JsonEngine @("occurrences", "--type", "word", "--experiment", (Get-Experiment), "--limit", "100", "--db", $Database)) "word" }
             "11" { Write-Occurrences @(Invoke-JsonEngine @("occurrences", "--type", "sentence", "--experiment", (Get-Experiment), "--limit", "100", "--db", $Database)) "sentence" }
             "12" { Invoke-CustomScan }
+            "13" { Write-Occurrences @(Invoke-JsonEngine @("occurrences", "--type", "phrase", "--experiment", (Get-Experiment), "--limit", "100", "--db", $Database)) "phrase" }
             "0" { return }
             default { Write-Host "Неизвестный пункт." -ForegroundColor Red }
         }
@@ -282,6 +288,7 @@ switch ($alias) {
     { $_ -in @("evaluate", "eval") } { Write-Evaluation (Invoke-JsonEngine @("evaluate", "--mode", "injection", "--dictionary", $Dictionary)); break }
     { $_ -in @("found-words", "words", "fw") } { Write-Occurrences @(Invoke-JsonEngine @("occurrences", "--type", "word", "--experiment", (Get-Experiment), "--limit", "100", "--db", $Database)) "word"; break }
     { $_ -in @("found-sentences", "fs") } { Write-Occurrences @(Invoke-JsonEngine @("occurrences", "--type", "sentence", "--experiment", (Get-Experiment), "--limit", "100", "--db", $Database)) "sentence"; break }
+    { $_ -in @("found-phrases", "phrases", "fp") } { Write-Occurrences @(Invoke-JsonEngine @("occurrences", "--type", "phrase", "--experiment", (Get-Experiment), "--limit", "100", "--db", $Database)) "phrase"; break }
     { $_ -in @("custom", "c") } { Invoke-CustomScan; break }
     { $_ -in @("scan", "s") } {
         $pages = if ($Arguments.Count -ge 1) { [uint64]$Arguments[0] } else { 10000 }
@@ -351,6 +358,7 @@ switch ($alias) {
   .\bmm eval            проверить синтетические внедрения
   .\bmm words           найденные слова и число повторений
   .\bmm fs              найденные одиночные предложения и число повторений
+  .\bmm phrases         совпадения из двух и более соседних слов
   .\bmm custom          выбрать режим и ввести своё число страниц
   .\bmm score "the dog sees a cat"  проверить произвольный текст
   .\bmm page 100        сгенерировать страницу
@@ -361,7 +369,7 @@ switch ($alias) {
   .\bmm test            собрать и запустить тесты
   .\bmm bench 10000     запустить бенчмарк
 
-Есть короткие сокращения: q, s, ss, fw, fs, c, sc, p, f, st, r, x, b, t.
+Есть короткие сокращения: q, s, ss, fw, fs, fp, c, sc, p, f, st, r, x, b, t.
 "@
         break
     }

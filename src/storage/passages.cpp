@@ -55,7 +55,8 @@ std::string Storage::occurrences_json(std::int64_t id,const std::string&type,std
  const char*where=nullptr;
  if(type=="word")where="classification='WORD'";
  else if(type=="sentence")where="detection_method='sentence' AND classification='GRAMMATICAL_SENTENCE'";
- else throw std::runtime_error("occurrence type must be word or sentence");
+ else if(type=="phrase")where="detection_method='phrase' AND word_count>=2";
+ else throw std::runtime_error("occurrence type must be word, phrase or sentence");
  std::string query="SELECT extracted_text,classification,source_mode,count(*) FROM findings WHERE experiment_id=? AND "+std::string(where)+" GROUP BY extracted_text,classification,source_mode ORDER BY count(*) DESC,length(extracted_text) DESC,extracted_text LIMIT ?";
  Statement rows(db_,query.c_str());rows.num(1,id);rows.num(2,limit);
  std::ostringstream out;out<<'[';bool first=true;

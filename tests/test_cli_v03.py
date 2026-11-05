@@ -61,17 +61,22 @@ class CliTests(unittest.TestCase):
                 for offset in (100,200):
                     con.execute("INSERT INTO findings(experiment_id,page_address,start_offset,end_offset,extracted_text,lexical_score,language_score,detection_method,classification,word_count,grammar_score,ngram_score,completeness_score,semantic_score,scoring_model,scoring_version,validation_method,source_backend,source_mode,verification_status) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                         (1,"frequency-fixture",offset,offset+3,"cat",3.,1.,"dictionary","WORD",1,0.,0.,0.,None,"baseline-untrained","1","lexical","fixture","injection","fixture-only"))
+                for offset in (300,400):
+                    con.execute("INSERT INTO findings(experiment_id,page_address,start_offset,end_offset,extracted_text,lexical_score,language_score,detection_method,classification,word_count,grammar_score,ngram_score,completeness_score,semantic_score,scoring_model,scoring_version,validation_method,source_backend,source_mode,verification_status) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                        (1,"frequency-fixture",offset,offset+7,"cat dog",7.,2.,"phrase","PHRASE",2,0.,0.,0.,None,"baseline-untrained","1","adjacent-words","fixture","injection","fixture-only"))
                 con.commit()
             words=json.loads(run("occurrences","--type","word","--experiment",1,"--db",db,"--limit",100).stdout)
             self.assertEqual(words,[{"text":"cat","classification":"WORD","source_mode":"injection","count":2}])
             listed=json.loads(run("findings","--type","word","--experiment",1,"--db",db,"--limit",100).stdout)
             self.assertEqual(len(listed),2)
+            phrases=json.loads(run("occurrences","--type","phrase","--experiment",1,"--db",db,"--limit",100).stdout)
+            self.assertEqual(phrases,[{"text":"cat dog","classification":"PHRASE","source_mode":"injection","count":2}])
             for fmt in ("json","csv"):
                 out=pathlib.Path(d)/("findings."+fmt)
                 run("export","--experiment",1,"--db",db,"--format",fmt,"--output",out)
                 with out.open(encoding="utf-8",newline="") as f:
                     rows=json.load(f) if fmt=="json" else list(csv.DictReader(f))
-                self.assertEqual(len(rows),3)
+                self.assertEqual(len(rows),5)
                 row=next(row for row in rows if row.get("text",row.get("extracted_text"))==text)
                 self.assertEqual(row["page_address"],address)
                 self.assertEqual(row.get("text",row.get("extracted_text")),text)
